@@ -1,12 +1,59 @@
 #include "DisasterPlanning.h"
 using namespace std;
 
+// Forward declare helper
+bool isCovered(const string& city,
+               const Map<string, Set<string>>& roadNetwork,
+               const Set<string>& supplyLocations);
+
 Optional<Set<string>> placeEmergencySupplies(const Map<string, Set<string>>& roadNetwork,
                                              int numCities) {
-    /* TODO: Delete this comment and next few lines, then implement this function. */
-    (void) roadNetwork;
-    (void) numCities;
-    return Nothing;
+    if (numCities < 0) {
+        error("Number of cities cannot be negative");
+    }
+
+    std::function<Optional<Set<string>>(Set<string> uncovered, Set<string> supplySet, int citiesLeft)> helper;
+
+    helper = [&](Set<string> uncovered, Set<string> supplySet, int citiesLeft) -> Optional<Set<string>> {
+        if (uncovered.isEmpty()) {
+            return supplySet;
+        }
+
+        if (citiesLeft == 0) {
+            return Nothing;
+        }
+
+        string target = uncovered.first();
+        Set<string> options = roadNetwork[target] + target;
+
+        for (const string& option : options) {
+            Set<string> newSupplies = supplySet;
+            newSupplies += option;
+
+            Set<string> newlyCovered;
+            for (const string& city : uncovered) {
+                if (isCovered(city, roadNetwork, newSupplies)) {
+                    newlyCovered += city;
+                }
+            }
+
+            Set<string> nextUncovered = uncovered - newlyCovered;
+
+            Optional<Set<string>> result = helper(nextUncovered, newSupplies, citiesLeft - 1);
+            if (result != Nothing) {
+                return result;
+            }
+        }
+
+        return Nothing;
+    };
+
+    Set<string> allCities;
+    for (string city : roadNetwork.keys()) {
+        allCities += city;
+    }
+
+    return helper(allCities, {}, numCities);
 }
 
 
@@ -80,7 +127,7 @@ PROVIDED_TEST("Works for map with no cities.") {
 
 PROVIDED_TEST("Works for map with one city.") {
     Map<string, Set<string>> map = makeSymmetric({
-         { "Solipsist", {} }
+        { "Solipsist", {} }
     });
 
     /* Shouldn't matter how many cities we use, as long as it isn't zero! */
@@ -91,7 +138,7 @@ PROVIDED_TEST("Works for map with one city.") {
 
 PROVIDED_TEST("Works for map with one city, and produces output.") {
     Map<string, Set<string>> map = makeSymmetric({
-         { "Solipsist", {} }
+        { "Solipsist", {} }
     });
 
     EXPECT_EQUAL(placeEmergencySupplies(map, 0), Nothing);
@@ -101,8 +148,8 @@ PROVIDED_TEST("Works for map with one city, and produces output.") {
 
 PROVIDED_TEST("Works for map with two linked cities.") {
     Map<string, Set<string>> map = makeSymmetric({
-         { "A", { "B" } },
-         { "B", {     } }
+        { "A", { "B" } },
+        { "B", {     } }
     });
 
     EXPECT_EQUAL    (placeEmergencySupplies(map, 0), Nothing);
@@ -112,8 +159,8 @@ PROVIDED_TEST("Works for map with two linked cities.") {
 
 PROVIDED_TEST("Works for map with two linked cities, and produces output.") {
     Map<string, Set<string>> map = makeSymmetric({
-         { "A", { "B" } },
-    });
+                                                  { "A", { "B" } },
+                                                  });
 
     EXPECT_EQUAL(placeEmergencySupplies(map, 0), Nothing);
 
@@ -323,13 +370,13 @@ PROVIDED_TEST("Works for six cities in a line, regardless of order, and produces
 
 /* The "Don't Be Greedy" sample world. */
 const Map<string, Set<string>> kDontBeGreedy = makeSymmetric({
-    { "A", { "B" } },
-    { "B", { "C", "D" } },
-    { "C", { "D" } },
-    { "D", { "F", "G" } },
-    { "E", { "F" } },
-    { "F", { "G" } },
-});
+                                                              { "A", { "B" } },
+                                                              { "B", { "C", "D" } },
+                                                              { "C", { "D" } },
+                                                              { "D", { "F", "G" } },
+                                                              { "E", { "F" } },
+                                                              { "F", { "G" } },
+                                                              });
 
 PROVIDED_TEST("Solves \"Don't be Greedy\" from the handout.") {
     EXPECT_EQUAL(placeEmergencySupplies(kDontBeGreedy, 0), Nothing);
@@ -366,10 +413,10 @@ PROVIDED_TEST("Solves \"Don't be Greedy,\" regardless of ordering, and produces 
     Vector<string> cities = { "A", "B", "C", "D", "E", "F", "G" };
     do {
         Map<string, Set<string>> map = makeSymmetric({
-            { cities[1], { cities[0], cities[2], cities[5] } },
-            { cities[2], { cities[3], cities[5], cities[6] } },
-            { cities[3], { cities[4], cities[6] } },
-        });
+                                                      { cities[1], { cities[0], cities[2], cities[5] } },
+                                                      { cities[2], { cities[3], cities[5], cities[6] } },
+                                                      { cities[3], { cities[4], cities[6] } },
+                                                      });
 
         /* We should be able to cover everything with two cities. */
         EXPECT_EQUAL(placeEmergencySupplies(map, 2), { cities[1], cities[3] });
@@ -398,8 +445,8 @@ PROVIDED_TEST("Stress test: 6 x 6 grid.") {
 
     /* 10x factor of safety relative to my middle-of-the-line computer. */
     EXPECT_COMPLETES_IN(20.0,
-        EXPECT_NOT_EQUAL(placeEmergencySupplies(grid, 10), Nothing);
-    );
+                        EXPECT_NOT_EQUAL(placeEmergencySupplies(grid, 10), Nothing);
+                        );
 }
 
 PROVIDED_TEST("Stress test: 6 x 6 grid, with output.") {
@@ -424,8 +471,8 @@ PROVIDED_TEST("Stress test: 6 x 6 grid, with output.") {
 
     /* 10x factor of safety relative to my middle-of-the-line computer. */
     EXPECT_COMPLETES_IN(20.0,
-        locations = placeEmergencySupplies(grid, 10);
-    );
+                        locations = placeEmergencySupplies(grid, 10);
+                        );
     EXPECT_NOT_EQUAL(locations, Nothing);
     EXPECT_LESS_THAN_OR_EQUAL_TO(locations.value().size(), 10);
 
@@ -435,4 +482,3 @@ PROVIDED_TEST("Stress test: 6 x 6 grid, with output.") {
         }
     }
 }
-
